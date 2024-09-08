@@ -2,9 +2,61 @@ import 'package:flutter/material.dart';
 import 'package:recipe_application/screens/loading_page.dart';
 import 'package:recipe_application/widgets/status_bar.dart';
 import 'package:recipe_application/screens/home_screen.dart';
-import 'package:recipe_application/screens/register_screen.dart'; // Ensure RegisterScreen is imported
+import 'package:recipe_application/screens/register_screen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+// Ensure RegisterScreen is imported
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
+  @override
+  _LoginScreenState createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  String _errorMessage = '';
+
+  Future<void> _login() async {
+    final username = _usernameController.text;
+    final password = _passwordController.text;
+
+    final url = Uri.parse(
+        'http://192.168.1.70:5000/api/login'); // Update IP and port as needed
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'username': username,
+          'password': password,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        // Handle success (e.g., navigate to home screen)
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => LoadingPage(), // Or navigate to HomeScreen
+          ),
+        );
+      } else {
+        // Handle error
+        setState(() {
+          _errorMessage =
+              json.decode(response.body)['message'] ?? 'Login failed';
+        });
+      }
+    } catch (error) {
+      setState(() {
+        _errorMessage = 'An error occurred: $error';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -96,14 +148,7 @@ class LoginScreen extends StatelessWidget {
               left: 179,
               top: 548.68,
               child: GestureDetector(
-                onTap: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => LoadingPage(),
-                    ),
-                  );
-                },
+                onTap: _login,
                 child: Container(
                   width: 49.50,
                   height: 49.50,
@@ -315,6 +360,7 @@ class LoginScreen extends StatelessWidget {
                     SizedBox(width: 10),
                     Expanded(
                       child: TextField(
+                        controller: _usernameController,
                         decoration: InputDecoration(
                           hintText: 'Username',
                           border: InputBorder.none,
@@ -351,6 +397,7 @@ class LoginScreen extends StatelessWidget {
                     SizedBox(width: 10),
                     Expanded(
                       child: TextField(
+                        controller: _passwordController,
                         obscureText: true,
                         decoration: InputDecoration(
                           hintText: 'Password',

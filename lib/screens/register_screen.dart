@@ -1,7 +1,91 @@
 import 'package:flutter/material.dart';
 import 'package:recipe_application/widgets/status_bar.dart'; // Import if StatusBar is used here
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-class RegisterScreen extends StatelessWidget {
+class RegisterScreen extends StatefulWidget {
+  @override
+  _RegisterScreenState createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
+
+  bool isLoading = false;
+
+  // Function to handle registration
+  Future<void> registerUser() async {
+    final String username = usernameController.text.trim();
+    final String email = emailController.text.trim();
+    final String password = passwordController.text.trim();
+    final String confirmPassword = confirmPasswordController.text.trim();
+
+    if (username.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
+      _showMessage('Please fill in all fields.');
+      return;
+    }
+
+    if (password != confirmPassword) {
+      _showMessage('Passwords do not match');
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
+    final url = Uri.parse(
+        'http://192.168.1.70:5000/api/register'); // Replace with your backend URL
+
+    try {
+      print('Sending registration data to the server...');
+
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'username': username,
+          'email': email,
+          'password': password,
+        }),
+      );
+
+      print('Response status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        _showMessage('Registration successful');
+        print(
+            'User registered successfully. Navigating to verification page...');
+        Navigator.pushNamed(
+            context, '/verify'); // Navigate to the verification page
+      } else {
+        final responseBody = json.decode(response.body);
+        _showMessage(responseBody['message']);
+        print('Registration failed: ${responseBody['message']}');
+      }
+    } catch (error) {
+      _showMessage('An error occurred. Please try again.');
+      print('Error occurred while registering user: $error');
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -171,26 +255,26 @@ class RegisterScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     _buildTextField(
-                      context: context,
+                      controller: usernameController,
                       icon: Icons.person,
                       hintText: 'Username',
                     ),
                     SizedBox(height: 20),
                     _buildTextField(
-                      context: context,
+                      controller: emailController,
                       icon: Icons.email,
                       hintText: 'Email',
                     ),
                     SizedBox(height: 20),
                     _buildTextField(
-                      context: context,
+                      controller: passwordController,
                       icon: Icons.lock,
                       hintText: 'Password',
                       obscureText: true,
                     ),
                     SizedBox(height: 20),
                     _buildTextField(
-                      context: context,
+                      controller: confirmPasswordController,
                       icon: Icons.lock,
                       hintText: 'Confirm Password',
                       obscureText: true,
@@ -202,25 +286,29 @@ class RegisterScreen extends StatelessWidget {
             // New Positioned Containers Below the White Container with TextFields
             Positioned(
               left: 159,
-              top: 560, // Adjust the top position according to your layout
-              child: Container(
-                width: 66,
-                height: 66,
-                decoration: ShapeDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment(0.00, -1.00),
-                    end: Alignment(0, 1),
-                    colors: [Colors.white, Color(0xFFD6D6D6)],
-                  ),
-                  shape: OvalBorder(),
-                  shadows: [
-                    BoxShadow(
-                      color: Color(0x3D333333),
-                      blurRadius: 20.27,
-                      offset: Offset(0, 10.13),
-                      spreadRadius: 0,
+              top: 560,
+              child: GestureDetector(
+                onTap: isLoading ? null : registerUser,
+                // Adjust the top position according to your layout
+                child: Container(
+                  width: 66,
+                  height: 66,
+                  decoration: ShapeDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment(0.00, -1.00),
+                      end: Alignment(0, 1),
+                      colors: [Colors.white, Color(0xFFD6D6D6)],
                     ),
-                  ],
+                    shape: OvalBorder(),
+                    shadows: [
+                      BoxShadow(
+                        color: Color(0x3D333333),
+                        blurRadius: 20.27,
+                        offset: Offset(0, 10.13),
+                        spreadRadius: 0,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -229,7 +317,8 @@ class RegisterScreen extends StatelessWidget {
               top: 570, // Adjust the top position according to your layout
               child: GestureDetector(
                 onTap: () {
-                  Navigator.pushNamed(context, '/verify');
+                  onTap:
+                  isLoading ? null : registerUser;
                 },
                 child: Container(
                   width: 49.50,
@@ -287,7 +376,7 @@ class RegisterScreen extends StatelessWidget {
   }
 
   Widget _buildTextField({
-    required BuildContext context,
+    required TextEditingController controller,
     required IconData icon,
     required String hintText,
     bool obscureText = false,
@@ -312,6 +401,7 @@ class RegisterScreen extends StatelessWidget {
           SizedBox(width: 10),
           Expanded(
             child: TextField(
+              controller: controller,
               obscureText: obscureText,
               decoration: InputDecoration(
                 hintText: hintText,
